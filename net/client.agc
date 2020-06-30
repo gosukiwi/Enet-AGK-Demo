@@ -86,19 +86,14 @@ function ClientParseReceiveEventPacket(peer as integer, packet$ as string)
       gRemotePlayers[index].y = y
     endcase
     case PACKET_TYPE_WORLD_STATE
-      // The server broadcasts packets like this: "0,100,100:1:123:321:"
-      // Each player is separated by `:`, then by commas.
-      // The first token is the player index in the server, the second the X position, and the third the Y position
-      for i = 0 to CountStringTokens(message$, ":") - 1
-        playerData$ = GetStringToken(message$, ":", i + 1)
-        receivedIndex = Val(GetStringToken(playerData$, ",",  1))
-        receivedX = Val(GetStringToken(playerData$, ",",  2))
-        receivedY = Val(GetStringToken(playerData$, ",",  3))
+      packet as tWorldStatePacket
+      packet = DeserializeServerGameplayState(message$)
+      for i = 0 to packet.players.length
+        index = packet.players[i].remoteIndex
+        if index = gLocalPlayer.remoteIndex then continue
 
-        if receivedIndex = gLocalPlayer.remoteIndex then continue
-
-        gRemotePlayers[receivedIndex].x = receivedX
-        gRemotePlayers[receivedIndex].y = receivedY
+        gRemotePlayers[index].x = packet.players[i].x
+        gRemotePlayers[index].y = packet.players[i].y
       next i
     endcase
     case default

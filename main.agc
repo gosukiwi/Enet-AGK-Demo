@@ -2,6 +2,7 @@
 // Created: 2020-06-27
 #import_plugin EnetAGK as Enet
 #include "constants.agc"
+#include "net/packets.agc"
 #include "net/server.agc"
 #include "net/client.agc"
 
@@ -64,6 +65,8 @@ do
       Enet.Initialize()
       server = Enet.CreateServer(6400, MAX_PLAYERS) // port 6400, max 4 connections
       client = Enet.CreateClient()
+      Enet.SetHostCompressWithRangeCoder(server) // use default compressor for packets
+      Enet.SetHostCompressWithRangeCoder(client)
       Enet.HostConnectAsync(client, "localhost", 6400) // this would be the remote IP
 
       do
@@ -88,6 +91,7 @@ do
     if GetRawKeyReleased(KEY_SPACE)
       Enet.Initialize()
       client = Enet.CreateClient()
+      Enet.SetHostCompressWithRangeCoder(client) // use default compressor
       peer = Enet.HostConnect(client, "localhost", 6400) // this would be the remote IP
       if client > 0 and peer > 0
         gCurrentScene = "GAME"

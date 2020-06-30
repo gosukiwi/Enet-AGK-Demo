@@ -1,5 +1,14 @@
-// world-state for the server
-global gServerState as tPlayer[]
+// server state
+type tServerState
+  players as tPlayer[]
+endtype
+global gServerState as tServerState
+
+// Adds a new player to the server state and returns it's index
+function ServerStateAddPlayer()
+  gServerState.players.insert(NewPlayer())
+endfunction gServerState.players.length
+// end of server-state
 
 function SyncServer(host as integer)
   do
@@ -16,16 +25,16 @@ function SyncServer(host as integer)
 endfunction
 
 function ServerParseEvent(host as integer, event as integer, type$ as string)
-  address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
   select type$
     case "connect"
+      address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
       Log("[SERVER] " + address$ + " connected")
-      gServerState.insert(NewPlayer())
+      index = ServerStateAddPlayer()
 
-      welcomePacket$ = Str(PACKET_TYPE_PLAYER_ID) + BACKSPACE + Str(gServerState.length) + "$"
-      for i = 0 to gServerState.length - 1 // world state but the last added
+      welcomePacket$ = Str(PACKET_TYPE_PLAYER_ID) + BACKSPACE + Str(index) + "$"
+      for i = 0 to gServerState.players.length - 1 // world state but the last added
         // index,color,x,y:
-        welcomePacket$ = welcomePacket$ + Str(i) + "," + Str(gServerState[i].color) + "," + Str(gServerState[i].x) + "," + Str(gServerState[i].y) + ":"
+        welcomePacket$ = welcomePacket$ + Str(i) + "," + Str(gServerState.players[i].color) + "," + Str(gServerState.players[i].x) + "," + Str(gServerState.players[i].y) + ":"
       next i
       Enet.EventPeerSend(event, welcomePacket$ , "reliable")
     endcase
@@ -33,6 +42,7 @@ function ServerParseEvent(host as integer, event as integer, type$ as string)
       ServerParseReceiveEventPacket(host, Enet.GetEventData(event))
     endcase
     case "disconnect"
+      address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
       Log("[SERVER] Disconnected: " + address$)
     endcase
   endselect
@@ -49,10 +59,10 @@ function ServerParseReceiveEventPacket(host as integer, packet$ as string)
       y = Val(GetStringToken(message$, ",",  4))
 
       // TODO: Validate index valid
-      gServerState[index].initialized = 1
-      gServerState[index].color = color
-      gServerState[index].x = x
-      gServerState[index].y = y
+      gServerState.players[index].initialized = 1
+      gServerState.players[index].color = color
+      gServerState.players[index].x = x
+      gServerState.players[index].y = y
 
       packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(index) + "," + Str(color) + "," + Str(x) + "," + Str(y)
       Enet.HostBroadcast(host, packet$, "reliable")
@@ -62,9 +72,9 @@ function ServerParseReceiveEventPacket(host as integer, packet$ as string)
       receivedX = Val(GetStringToken(message$, ",",  2))
       receivedY = Val(GetStringToken(message$, ",",  3))
 
-      if receivedIndex <= gServerState.length
-        gServerState[receivedIndex].x = receivedX
-        gServerState[receivedIndex].y = receivedY
+      if receivedIndex <= gServerState.players.length
+        gServerState.players[receivedIndex].x = receivedX
+        gServerState.players[receivedIndex].y = receivedY
       endif
     endcase
     case default
@@ -74,12 +84,6 @@ function ServerParseReceiveEventPacket(host as integer, packet$ as string)
 endfunction
 
 function ServerSend(host as integer)
-  // Broadcast a packet with all player states
-  // format:   PACKET_TYPE-INDEX,X,Y:INDEX2,X2,Y2:...
-  // example:  1-0,100,100:1,200,123:
-  packet$ = Str(PACKET_TYPE_WORLD_STATE) + BACKSPACE
-  for i = 0 to gServerState.length
-    packet$ = packet$ + Str(i) + "," + Str(gServerState[i].x) + "," + Str(gServerState[i].y) + ":"
-  next i
+  packet$ = CreatePacket(PACKET_TYPE_WORLD_STATE, SerializeServerGameplayState(gServerState))
   Enet.HostBroadcast(host, packet$, "unreliable")
 endfunction
