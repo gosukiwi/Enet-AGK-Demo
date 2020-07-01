@@ -47,29 +47,7 @@ function ClientParseReceiveEventPacket(peer as integer, packet$ as string)
   message$ = GetStringToken(packet$, BACKSPACE, 2)
   select eventType // get packet type
     case PACKET_TYPE_PLAYER_ID
-      index = Val(GetStringToken(message$, "$",  1))
-      world$ = GetStringToken(message$, "$",  2)
-      gLocalPlayer.remoteIndex = index
-
-      // The first time we need to build the world we might send more data than
-      // we usually do, for example, the color is needed just once
-      for i = 0 to CountStringTokens(world$, ":") - 1
-        playerData$ = GetStringToken(world$, ":", i + 1)
-        index = Val(GetStringToken(playerData$, ",",  1))
-        color = Val(GetStringToken(playerData$, ",",  2))
-        x = Val(GetStringToken(playerData$, ",",  3))
-        y = Val(GetStringToken(playerData$, ",",  4))
-
-        // TODO: Check indexes
-        gRemotePlayers[index].initialized = 1
-        gRemotePlayers[index].color = color
-        gRemotePlayers[index].x = x
-        gRemotePlayers[index].y = y
-      next i
-
-      // Send initial data to server
-      packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.color) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y)
-      Enet.PeerSend(peer, packet$, "reliable")
+      HandlePlayerIdPacket(message$, peer)
     endcase
     case PACKET_TYPE_PLAYER_JOINED
       index = Val(GetStringToken(message$, ",",  1))
@@ -86,15 +64,7 @@ function ClientParseReceiveEventPacket(peer as integer, packet$ as string)
       gRemotePlayers[index].y = y
     endcase
     case PACKET_TYPE_WORLD_STATE
-      packet as tWorldStatePacket
-      packet = DeserializeServerGameplayState(message$)
-      for i = 0 to packet.players.length
-        index = packet.players[i].remoteIndex
-        if index = gLocalPlayer.remoteIndex then continue
-
-        gRemotePlayers[index].x = packet.players[i].x
-        gRemotePlayers[index].y = packet.players[i].y
-      next i
+      HandleWorldStatePacket(message$)
     endcase
     case default
       Log("[CLIENT][WARNING] EVENT TYPE NOT HANDLED: " + Str(eventType))
@@ -110,5 +80,36 @@ function DrawRemotePlayers()
     if not player.initialized then continue
 
     DrawBox(player.x, player.y, player.x + 100,  player.y + 100, player.color, player.color, player.color, player.color,  1)
+  next i
+endfunction
+
+function HandlePlayerIdPacket(message$ as string, peer as integer)
+  packet as tWelcomePacket
+  packet = DeserializeWelcomePacket(message$)
+  index = packet.remoteIndex
+  gLocalPlayer.remoteIndex = index
+
+  for i = 0 to packet.players.length
+    index = packet.players[i].remoteIndex
+    gRemotePlayers[index].initialized = 1
+    gRemotePlayers[index].color = packet.players[i].color
+    gRemotePlayers[index].x = packet.players[i].x
+    gRemotePlayers[index].y = packet.players[i].y
+  next i
+
+  // Send initial data to server
+  packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.color) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y)
+  Enet.PeerSend(peer, packet$, "reliable")
+endfunction
+
+function HandleWorldStatePacket(message$ as string)
+  packet as tWorldStatePacket
+  packet = DeserializeServerGameplayState(message$)
+  for i = 0 to packet.players.length
+    index = packet.players[i].remoteIndex
+    if index = gLocalPlayer.remoteIndex then continue
+
+    gRemotePlayers[index].x = packet.players[i].x
+    gRemotePlayers[index].y = packet.players[i].y
   next i
 endfunction

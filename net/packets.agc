@@ -14,6 +14,18 @@ type tWorldStatePacket
   players as tWorldStatePacketPlayer[]
 endtype
 
+type tWelcomePacketPlayer
+  x as integer
+  y as integer
+  color as integer
+  remoteIndex as integer
+endtype
+
+type tWelcomePacket
+  remoteIndex as integer
+  players as tWelcomePacketPlayer[]
+endtype
+
 function CreatePacket(packetType as integer, message$ as string)
   packet$ = Str(packetType) + BACKSPACE + message$
 endfunction packet$
@@ -42,4 +54,23 @@ endfunction packet$
 function DeserializeServerGameplayState(message$ as string)
   packet as tWorldStatePacket
   packet.fromJSON(message$)
+endfunction packet
+
+function SerializeWelcomePacket(state ref as tServerState)
+  packet as tWelcomePacket
+  packet.remoteIndex = gServerState.players.length
+  for i = 0 to gServerState.players.length - 1 // world state but the last added
+    player as tWelcomePacketPlayer
+    player.remoteIndex = i
+    player.color = gServerState.players[i].color
+    player.x = gServerState.players[i].x
+    player.y = gServerState.players[i].y
+    packet.players.insert(player)
+  next i
+  packet$ = packet.toJSON()
+endfunction packet$
+
+function DeserializeWelcomePacket(packet$ as string)
+  packet as tWelcomePacket
+  packet.fromJSON(packet$)
 endfunction packet

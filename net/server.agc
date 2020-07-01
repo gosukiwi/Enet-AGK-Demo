@@ -3,11 +3,6 @@ type tServerState
   players as tPlayer[]
 endtype
 global gServerState as tServerState
-
-// Adds a new player to the server state and returns it's index
-function ServerStateAddPlayer()
-  gServerState.players.insert(NewPlayer())
-endfunction gServerState.players.length
 // end of server-state
 
 function SyncServer(host as integer)
@@ -29,14 +24,9 @@ function ServerParseEvent(host as integer, event as integer, type$ as string)
     case "connect"
       address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
       Log("[SERVER] " + address$ + " connected")
-      index = ServerStateAddPlayer()
-
-      welcomePacket$ = Str(PACKET_TYPE_PLAYER_ID) + BACKSPACE + Str(index) + "$"
-      for i = 0 to gServerState.players.length - 1 // world state but the last added
-        // index,color,x,y:
-        welcomePacket$ = welcomePacket$ + Str(i) + "," + Str(gServerState.players[i].color) + "," + Str(gServerState.players[i].x) + "," + Str(gServerState.players[i].y) + ":"
-      next i
-      Enet.EventPeerSend(event, welcomePacket$ , "reliable")
+      gServerState.players.insert(NewPlayer())
+      packet$ = CreatePacket(PACKET_TYPE_PLAYER_ID, SerializeWelcomePacket(gServerState))
+      Enet.EventPeerSend(event, packet$ , "reliable")
     endcase
     case "receive"
       ServerParseReceiveEventPacket(host, Enet.GetEventData(event))
