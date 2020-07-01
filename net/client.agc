@@ -1,12 +1,14 @@
 // an array of remote players which are updated from server data
 // used by the client only
-global gRemotePlayers as tPlayer[]
+global gRemotePlayers as tPlayer[MAX_PLAYERS]
 
-function InitializeClient()
-  for i = 1 to MAX_PLAYERS - 1
-    gRemotePlayers.insert(NewPlayer())
-  next i
+function ClientSend(peer as integer)
+  if gLocalPlayer.remoteIndex = -1 then exitfunction
+
+  Enet.PeerSend(peer, CreatePacket(PACKET_TYPE_PLAYER_STATE, SerializePlayerStatePacket(gLocalPlayer)), "unreliable")
 endfunction
+
+// Private
 
 function SyncClient(host as integer, peer as integer)
   do
@@ -25,7 +27,7 @@ endfunction
 function ClientRead(peer as integer, event as integer, type$ as string)
   select type$
     case "receive"
-      ClientParseReceiveEventPacket(peer, Enet.GetEventData(event))
+      HandleRecieveEventClient(peer, Enet.GetEventData(event))
     endcase
     case "disconnect"
       address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
@@ -34,16 +36,7 @@ function ClientRead(peer as integer, event as integer, type$ as string)
   endselect
 endfunction
 
-function ClientSend(peer as integer)
-  if gLocalPlayer.remoteIndex = -1 then exitfunction
-
-  // Enet.PeerSend(peer, Str(PACKET_TYPE_PLAYER_STATE) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y), "unreliable")
-  Enet.PeerSend(peer, CreatePacket(PACKET_TYPE_PLAYER_STATE, SerializePlayerStatePacket(gLocalPlayer)), "unreliable")
-endfunction
-
-// Private
-
-function ClientParseReceiveEventPacket(peer as integer, packet$ as string)
+function HandleRecieveEventClient(peer as integer, packet$ as string)
   eventType = Val(GetStringToken(packet$, BACKSPACE,  1))
   message$ = GetStringToken(packet$, BACKSPACE, 2)
   select eventType // get packet type
@@ -62,17 +55,6 @@ function ClientParseReceiveEventPacket(peer as integer, packet$ as string)
   endselect
 endfunction
 
-function DrawRemotePlayers()
-  // draw remote players
-  for i = 0 to gRemotePlayers.length
-    player as tPlayer
-    player = gRemotePlayers[i]
-    if not player.initialized then continue
-
-    DrawBox(player.x, player.y, player.x + 100,  player.y + 100, player.color, player.color, player.color, player.color,  1)
-  next i
-endfunction
-
 function HandlePlayerIdPacket(message$ as string, peer as integer)
   packet as tWelcomePacket
   packet = DeserializeWelcomePacket(message$)
@@ -88,7 +70,6 @@ function HandlePlayerIdPacket(message$ as string, peer as integer)
   next i
 
   // Send initial data to server
-  // packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.color) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y)
   packet$ = CreatePacket(PACKET_TYPE_PLAYER_JOINED, SerializeInitialPlayerDataPacket(gLocalPlayer))
   Enet.PeerSend(peer, packet$, "reliable")
 endfunction

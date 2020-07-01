@@ -19,6 +19,13 @@ function SyncServer(host as integer)
   endif
 endfunction
 
+// Private
+
+function ServerSend(host as integer)
+  packet$ = CreatePacket(PACKET_TYPE_WORLD_STATE, SerializeServerGameplayState(gServerState))
+  Enet.HostBroadcast(host, packet$, "unreliable")
+endfunction
+
 function ServerParseEvent(host as integer, event as integer, type$ as string)
   select type$
     case "connect"
@@ -29,7 +36,7 @@ function ServerParseEvent(host as integer, event as integer, type$ as string)
       Enet.EventPeerSend(event, packet$ , "reliable")
     endcase
     case "receive"
-      ServerHandleRecieveEventPacket(host, Enet.GetEventData(event))
+      HandleRecieveEventServer(host, Enet.GetEventData(event))
     endcase
     case "disconnect"
       address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
@@ -38,7 +45,7 @@ function ServerParseEvent(host as integer, event as integer, type$ as string)
   endselect
 endfunction
 
-function ServerHandleRecieveEventPacket(host as integer, packet$ as string)
+function HandleRecieveEventServer(host as integer, packet$ as string)
   eventType = Val(GetStringToken(packet$, BACKSPACE,  1))
   message$ = GetStringToken(packet$, BACKSPACE, 2)
   select eventType
@@ -52,11 +59,6 @@ function ServerHandleRecieveEventPacket(host as integer, packet$ as string)
       Log("[SERVER] NOT HANDLED: " + Str(eventType))
     endcase
   endselect
-endfunction
-
-function ServerSend(host as integer)
-  packet$ = CreatePacket(PACKET_TYPE_WORLD_STATE, SerializeServerGameplayState(gServerState))
-  Enet.HostBroadcast(host, packet$, "unreliable")
 endfunction
 
 function HandlePlayerStatePacket(message$ as string)

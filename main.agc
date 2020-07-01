@@ -47,6 +47,18 @@ global gSpeed = 200
 gCurrentScene = "MENU"
 gLocalPlayer = NewPlayer()
 
+// TODO: Move to game scene
+function DrawRemotePlayers()
+  // draw remote players
+  for i = 0 to gRemotePlayers.length
+    player as tPlayer
+    player = gRemotePlayers[i]
+    if not player.initialized then continue
+
+    DrawBox(player.x, player.y, player.x + 100,  player.y + 100, player.color, player.color, player.color, player.color,  1)
+  next i
+endfunction
+
 elapsed# = Timer()
 do
   new# = Timer()
@@ -82,7 +94,6 @@ do
       if server > 0 and peer > 0 and client > 0
         gCurrentScene = "GAME"
         gMode = "SERVER"
-        InitializeClient()
       else
         gCurrentScene = "CLIENT_ERROR"
       endif
@@ -96,7 +107,6 @@ do
       if client > 0 and peer > 0
         gCurrentScene = "GAME"
         gMode = "CLIENT"
-        InitializeClient()
       else
         gCurrentScene = "CLIENT_ERROR"
       endif
@@ -124,7 +134,6 @@ do
     endif
 
     // draw local player
-    red = MakeColor(255, 0, 0)
     DrawBox(gLocalPlayer.x, gLocalPlayer.y, gLocalPlayer.x + 100,  gLocalPlayer.y + 100, gLocalPlayer.color, gLocalPlayer.color, gLocalPlayer.color, gLocalPlayer.color,  1)
     DrawRemotePlayers()
   elseif gCurrentScene = "CLIENT_ERROR"
