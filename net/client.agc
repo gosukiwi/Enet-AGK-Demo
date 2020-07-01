@@ -37,7 +37,8 @@ endfunction
 function ClientSend(peer as integer)
   if gLocalPlayer.remoteIndex = -1 then exitfunction
 
-  Enet.PeerSend(peer, Str(PACKET_TYPE_PLAYER_STATE) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y), "unreliable")
+  // Enet.PeerSend(peer, Str(PACKET_TYPE_PLAYER_STATE) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y), "unreliable")
+  Enet.PeerSend(peer, CreatePacket(PACKET_TYPE_PLAYER_STATE, SerializePlayerStatePacket(gLocalPlayer)), "unreliable")
 endfunction
 
 // Private

@@ -4,14 +4,14 @@
 #constant PACKET_TYPE_WORLD_STATE   4
 #constant BACKSPACE Chr(8)
 
-type tWorldStatePacketPlayer
+type tPlayerStatePacket
+  remoteIndex as integer
   x as integer
   y as integer
-  remoteIndex as integer
 endtype
 
 type tWorldStatePacket
-  players as tWorldStatePacketPlayer[]
+  players as tPlayerStatePacket[]
 endtype
 
 type tWelcomePacketPlayer
@@ -42,7 +42,7 @@ endfunction packet$
 function SerializeServerGameplayState(state ref as tServerState)
   packet as tWorldStatePacket
   for i = 0 to state.players.length
-    player as tWorldStatePacketPlayer
+    player as tPlayerStatePacket
     player.remoteIndex = i
     player.x = state.players[i].x
     player.y = state.players[i].y
@@ -72,5 +72,18 @@ endfunction packet$
 
 function DeserializeWelcomePacket(packet$ as string)
   packet as tWelcomePacket
+  packet.fromJSON(packet$)
+endfunction packet
+
+function SerializePlayerStatePacket(player ref as tPlayer)
+  packet as tPlayerStatePacket
+  packet.remoteIndex = player.remoteIndex
+  packet.x = player.x
+  packet.y = player.y
+  packet$ = packet.toJSON()
+endfunction packet$
+
+function DeserializePlayerStatePacket(packet$ as string)
+  packet as tPlayerStatePacket
   packet.fromJSON(packet$)
 endfunction packet

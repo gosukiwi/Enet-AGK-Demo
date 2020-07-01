@@ -58,14 +58,7 @@ function ServerParseReceiveEventPacket(host as integer, packet$ as string)
       Enet.HostBroadcast(host, packet$, "reliable")
     endcase
     case PACKET_TYPE_PLAYER_STATE
-      receivedIndex = Val(GetStringToken(message$, ",",  1))
-      receivedX = Val(GetStringToken(message$, ",",  2))
-      receivedY = Val(GetStringToken(message$, ",",  3))
-
-      if receivedIndex <= gServerState.players.length
-        gServerState.players[receivedIndex].x = receivedX
-        gServerState.players[receivedIndex].y = receivedY
-      endif
+      HandlePlayerStatePacket(message$)
     endcase
     case default
       Log("[SERVER] NOT HANDLED: " + Str(eventType))
@@ -76,4 +69,15 @@ endfunction
 function ServerSend(host as integer)
   packet$ = CreatePacket(PACKET_TYPE_WORLD_STATE, SerializeServerGameplayState(gServerState))
   Enet.HostBroadcast(host, packet$, "unreliable")
+endfunction
+
+function HandlePlayerStatePacket(message$ as string)
+  packet as tPlayerStatePacket
+  packet = DeserializePlayerStatePacket(message$) // TODO: Rename to DeserializePlayerStatePacket
+  index = packet.remoteIndex
+
+  if index <= gServerState.players.length
+    gServerState.players[index].x = packet.x
+    gServerState.players[index].y = packet.y
+  endif
 endfunction
