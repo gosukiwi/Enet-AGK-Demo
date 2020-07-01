@@ -14,7 +14,7 @@ type tWorldStatePacket
   players as tPlayerStatePacket[]
 endtype
 
-type tWelcomePacketPlayer
+type tInitialPlayerDataPacket
   x as integer
   y as integer
   color as integer
@@ -23,22 +23,13 @@ endtype
 
 type tWelcomePacket
   remoteIndex as integer
-  players as tWelcomePacketPlayer[]
+  players as tInitialPlayerDataPacket[]
 endtype
 
 function CreatePacket(packetType as integer, message$ as string)
   packet$ = Str(packetType) + BACKSPACE + message$
 endfunction packet$
 
-// function CreatePlayerIdPacket()
-// endfunction
-
-// function DeserializePlayerIdPacket(packet$ as string, id ref as id)
-// endfunction
-
-// Serializes the server state for gameplay, this is a subset of the whole state.
-// Format:
-//   playerId,x,y:
 function SerializeServerGameplayState(state ref as tServerState)
   packet as tWorldStatePacket
   for i = 0 to state.players.length
@@ -60,7 +51,7 @@ function SerializeWelcomePacket(state ref as tServerState)
   packet as tWelcomePacket
   packet.remoteIndex = gServerState.players.length
   for i = 0 to gServerState.players.length - 1 // world state but the last added
-    player as tWelcomePacketPlayer
+    player as tInitialPlayerDataPacket
     player.remoteIndex = i
     player.color = gServerState.players[i].color
     player.x = gServerState.players[i].x
@@ -85,5 +76,19 @@ endfunction packet$
 
 function DeserializePlayerStatePacket(packet$ as string)
   packet as tPlayerStatePacket
+  packet.fromJSON(packet$)
+endfunction packet
+
+function SerializeInitialPlayerDataPacket(localPlayer as tPlayer)
+  packet as tInitialPlayerDataPacket
+  packet.remoteIndex = localPlayer.remoteIndex
+  packet.color = localPlayer.color
+  packet.x = localPlayer.x
+  packet.y = localPlayer.y
+  packet$ = packet.toJSON()
+endfunction packet$
+
+function DeserializeInitialPlayerDataPacket(packet$ as string)
+  packet as tInitialPlayerDataPacket
   packet.fromJSON(packet$)
 endfunction packet

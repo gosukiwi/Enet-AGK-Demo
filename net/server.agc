@@ -29,7 +29,7 @@ function ServerParseEvent(host as integer, event as integer, type$ as string)
       Enet.EventPeerSend(event, packet$ , "reliable")
     endcase
     case "receive"
-      ServerParseReceiveEventPacket(host, Enet.GetEventData(event))
+      ServerHandleRecieveEventPacket(host, Enet.GetEventData(event))
     endcase
     case "disconnect"
       address$ = Enet.GetEventPeerAddressHost(event) + ":" + Str(Enet.GetEventPeerAddressPort(event))
@@ -38,24 +38,12 @@ function ServerParseEvent(host as integer, event as integer, type$ as string)
   endselect
 endfunction
 
-function ServerParseReceiveEventPacket(host as integer, packet$ as string)
+function ServerHandleRecieveEventPacket(host as integer, packet$ as string)
   eventType = Val(GetStringToken(packet$, BACKSPACE,  1))
   message$ = GetStringToken(packet$, BACKSPACE, 2)
   select eventType
     case PACKET_TYPE_PLAYER_JOINED
-      index = Val(GetStringToken(message$, ",",  1))
-      color = Val(GetStringToken(message$, ",",  2))
-      x = Val(GetStringToken(message$, ",",  3))
-      y = Val(GetStringToken(message$, ",",  4))
-
-      // TODO: Validate index valid
-      gServerState.players[index].initialized = 1
-      gServerState.players[index].color = color
-      gServerState.players[index].x = x
-      gServerState.players[index].y = y
-
-      packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(index) + "," + Str(color) + "," + Str(x) + "," + Str(y)
-      Enet.HostBroadcast(host, packet$, "reliable")
+      ServerHandlePlayerJoinedPacket(message$, host)
     endcase
     case PACKET_TYPE_PLAYER_STATE
       HandlePlayerStatePacket(message$)
@@ -80,4 +68,19 @@ function HandlePlayerStatePacket(message$ as string)
     gServerState.players[index].x = packet.x
     gServerState.players[index].y = packet.y
   endif
+endfunction
+
+function ServerHandlePlayerJoinedPacket(message$ as string, host as integer)
+  packet as tInitialPlayerDataPacket
+  packet = DeserializeInitialPlayerDataPacket(message$)
+  index = packet.remoteIndex
+
+  // TODO: Validate index valid
+  gServerState.players[index].initialized = 1
+  gServerState.players[index].color = packet.color
+  gServerState.players[index].x = packet.x
+  gServerState.players[index].y = packet.y
+
+  packet$ = CreatePacket(PACKET_TYPE_PLAYER_JOINED, packet.toJSON())
+  Enet.HostBroadcast(host, packet$, "reliable")
 endfunction

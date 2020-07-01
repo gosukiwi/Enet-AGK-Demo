@@ -51,18 +51,7 @@ function ClientParseReceiveEventPacket(peer as integer, packet$ as string)
       HandlePlayerIdPacket(message$, peer)
     endcase
     case PACKET_TYPE_PLAYER_JOINED
-      index = Val(GetStringToken(message$, ",",  1))
-      if index = gLocalPlayer.remoteIndex then exitfunction // do not update my own info
-
-      color = Val(GetStringToken(message$, ",",  2))
-      x = Val(GetStringToken(message$, ",",  3))
-      y = Val(GetStringToken(message$, ",",  4))
-
-      // TODO: Validate index valid
-      gRemotePlayers[index].initialized = 1
-      gRemotePlayers[index].color = color
-      gRemotePlayers[index].x = x
-      gRemotePlayers[index].y = y
+      HandlePlayerJoinedPacket(message$)
     endcase
     case PACKET_TYPE_WORLD_STATE
       HandleWorldStatePacket(message$)
@@ -99,7 +88,8 @@ function HandlePlayerIdPacket(message$ as string, peer as integer)
   next i
 
   // Send initial data to server
-  packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.color) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y)
+  // packet$ = Str(PACKET_TYPE_PLAYER_JOINED) + BACKSPACE + Str(gLocalPlayer.remoteIndex) + "," + Str(gLocalPlayer.color) + "," + Str(gLocalPlayer.x) + "," + Str(gLocalPlayer.y)
+  packet$ = CreatePacket(PACKET_TYPE_PLAYER_JOINED, SerializeInitialPlayerDataPacket(gLocalPlayer))
   Enet.PeerSend(peer, packet$, "reliable")
 endfunction
 
@@ -113,4 +103,17 @@ function HandleWorldStatePacket(message$ as string)
     gRemotePlayers[index].x = packet.players[i].x
     gRemotePlayers[index].y = packet.players[i].y
   next i
+endfunction
+
+function HandlePlayerJoinedPacket(message$ as string)
+  packet as tInitialPlayerDataPacket
+  packet = DeserializeInitialPlayerDataPacket(message$)
+  index = packet.remoteIndex
+  if index = gLocalPlayer.remoteIndex then exitfunction // do not update my own info
+
+  // TODO: Validate index valid
+  gRemotePlayers[index].initialized = 1
+  gRemotePlayers[index].color = packet.color
+  gRemotePlayers[index].x = packet.x
+  gRemotePlayers[index].y = packet.y
 endfunction
